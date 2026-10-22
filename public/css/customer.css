@@ -1,0 +1,33 @@
+/* ===== TEMPEL DI PALING BAWAH customer.css ===== */
+
+/* 1. Font (penyebab tampilan serif) */
+.sw-shell,
+.sw-shell button,
+.sw-shell input,
+.sw-shell select,
+.sw-shell textarea {
+    font-family: 'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+/* 2. SVG tanpa ukuran (panah raksasa) */
+.sw-shell svg:not([width]) { width: 20px; height: 20px; flex-shrink: 0; }
+
+/* 3. Kartu pilihan tidak menimpa elemen di bawahnya */
+.sw-choice { display: block; }
+.sw-choices { grid-auto-rows: auto; align-items: stretch; margin-bottom: 20px; }
+.sw-choice-body { height: auto; min-height: 0; }
+.sw-choices + .sw-grid-2,
+.sw-choices + .sw-field { margin-top: 20px; }
+
+/* Sidebar: ikon, logo, avatar */
+.sw-brand { flex-direction: row; align-items: center; gap: 10px; flex-wrap: wrap; }
+.sw-brand svg { width: 34px; height: 34px; }
+.sw-brand > span { display: flex; flex-direction: column; }
+.sw-nav a { display: flex; align-items: center; gap: 12px; }
+.sw-user > div { display: flex; align-items: center; gap: 10px; }
+.sw-user small { display: block; color: var(--muted, #6b7f8c); }
+.sw-avatar {
+    width: 38px; height: 38px; border-radius: 50%;
+    display: grid; place-items: center; flex-shrink: 0;
+    background: var(--teal, #0b9d9b); color: #fff; font-weight: 700;
+}

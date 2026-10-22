@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jadwal Pickup | SWASH Admin</title><link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}"></head><body><div class="admin-layout">
+<aside class="sidebar"><a href="{{ url('/') }}" class="admin-brand" aria-label="SWASH">
+<svg class="brand-logo" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M24 3C19 11 8 20 8 30a16 16 0 0 0 32 0C40 20 29 11 24 3Z" fill="currentColor"/><path d="M30 17c-2 4-8 7-8 13 0 4 3 7 7 7 3 0 5-2 6-5" stroke="white" stroke-width="3" stroke-linecap="round"/><path d="M17 26c-2 2-3 5-2 8 1 4 5 7 10 7" stroke="white" stroke-width="3" stroke-linecap="round"/></svg>
+<span class="brand-copy"><strong>SWASH</strong><small>Laundry Service</small></span></a><p class="sidebar-label">MENU UTAMA</p><nav class="sidebar-nav"><a href="{{ url('/admin/dashboard') }}" class="sidebar-link "><span class="nav-mark"></span>Dashboard</a>
+<a href="{{ url('/admin/pesanan') }}" class="sidebar-link "><span class="nav-mark"></span>Pesanan</a>
+<a href="{{ url('/admin/jadwal-pickup') }}" class="sidebar-link active"><span class="nav-mark"></span>Jadwal Pickup</a>
+<a href="{{ url('/admin/driver') }}" class="sidebar-link "><span class="nav-mark"></span>Driver</a>
+<a href="{{ url('/admin/pembayaran') }}" class="sidebar-link "><span class="nav-mark"></span>Pembayaran</a>
+<a href="{{ url('/admin/laporan') }}" class="sidebar-link "><span class="nav-mark"></span>Laporan</a></nav>
+<div class="sidebar-bottom"><div class="admin-profile"><div class="profile-avatar">A</div><div><strong>Administrator</strong><small>Admin SWASH</small></div></div><a class="back-home" href="{{ url('/') }}">Kembali ke halaman utama</a></div></aside>
+<main class="admin-main"><header class="admin-topbar"><div><span class="topbar-label">SWASH / ADMIN</span><h1>Jadwal Pickup</h1></div><div class="topbar-date"><span class="status-dot"></span>Jadwal penjemputan</div></header>
+
+<section class="welcome-section"><div><p class="welcome-label">PENJEMPUTAN &amp; PENGANTARAN</p><h2>Jadwal Pickup</h2><p>Atur jadwal pengambilan dan pengantaran pakaian pelanggan.</p></div><button class="primary-button" onclick="alert('Form jadwal akan dibuat pada tahap backend.')">Tambah Jadwal</button></section>
+<section class="stats-grid"><article class="stat-card"><div class="stat-heading"><span>Pickup Hari Ini</span><span class="stat-index">01</span></div><strong class="stat-value">8</strong><p>Perlu dijemput</p></article><article class="stat-card"><div class="stat-heading"><span>Dalam Perjalanan</span><span class="stat-index">02</span></div><strong class="stat-value">3</strong><p>Driver sedang bertugas</p></article><article class="stat-card"><div class="stat-heading"><span>Pengantaran</span><span class="stat-index">03</span></div><strong class="stat-value">5</strong><p>Pesanan siap dikirim</p></article><article class="stat-card"><div class="stat-heading"><span>Selesai Hari Ini</span><span class="stat-index">04</span></div><strong class="stat-value">12</strong><p>Jadwal terselesaikan</p></article></section>
+<section class="panel orders-panel"><div class="panel-heading"><div><span class="panel-eyebrow">AGENDA OPERASIONAL</span><h3>Jadwal Terdekat</h3></div></div><div class="table-responsive"><table class="orders-table"><thead><tr><th>Waktu</th><th>ID Pesanan</th><th>Pelanggan</th><th>Alamat</th><th>Jenis</th><th>Driver</th><th>Status</th></tr></thead><tbody>
+<tr><td>09.00</td><td class="order-id">SW-00128</td><td>Nadia A.</td><td>Jl. Melati No. 12</td><td>Pickup</td><td>Bagas</td><td><span class="order-status status-waiting">Menunggu</span></td></tr>
+<tr><td>10.30</td><td class="order-id">SW-00127</td><td>Rafi F.</td><td>Jl. Kenanga No. 8</td><td>Pickup</td><td>Rizky</td><td><span class="order-status status-processing">Dijadwalkan</span></td></tr>
+<tr><td>13.00</td><td class="order-id">SW-00126</td><td>Dina P.</td><td>Jl. Mawar No. 4</td><td>Antar</td><td>Bagas</td><td><span class="order-status status-complete">Selesai</span></td></tr>
+<tr><td>15.30</td><td class="order-id">SW-00125</td><td>Andi S.</td><td>Jl. Anggrek No. 5</td><td>Antar</td><td>Rizky</td><td><span class="order-status status-payment">Perlu Konfirmasi</span></td></tr></tbody></table></div><p class="demo-note">Alamat dan jadwal di atas hanya data ilustrasi.</p></section>
+<footer class="admin-footer"><span>SWASH Laundry Service</span><span>Panel Administrasi</span></footer></main></div></body></html>
