@@ -4,13 +4,9 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Route;
 
-/*
-|--------------------------------------------------------------------------
-| Pelengkap tampilan (tidak butuh file model / config lain)
-|--------------------------------------------------------------------------
-*/
 if (!config('swash')) {
     config(['swash' => [
         'services' => [
@@ -60,14 +56,6 @@ if (!class_exists('SampleOrder')) {
     }
 }
 
-/*
-|--------------------------------------------------------------------------
-| TAMPILAN SAJA: tanpa login, tanpa database, tanpa controller
-|--------------------------------------------------------------------------
-| Semua halaman bisa dibuka langsung lewat URL. Isinya data contoh.
-*/
-
-// nama & alamat contoh untuk sidebar dan form di halaman /customer/*
 if (request()->is('customer/*')) {
     Auth::setUser((new \Illuminate\Foundation\Auth\User)->forceFill([
         'id'      => 0,
@@ -79,7 +67,6 @@ if (request()->is('customer/*')) {
     ]));
 }
 
-// data pesanan contoh (hanya objek biasa, tidak menyentuh database)
 $samples = collect([
     ['id' => 130, 'code' => 'SW-00130', 'service' => 'cuci_setrika', 'delivery_type' => 'antar_jemput',
      'address_type' => 'profil', 'address' => 'Jl. Contoh No. 1, Surabaya',
@@ -168,7 +155,9 @@ Route::redirect('/profil', '/customer/profil');
 $info = fn (string $pesan) => fn () => back()->with('success', $pesan);
 
 Route::prefix('customer')->name('customer.')->group(function () use ($samples, $info) {
-    Route::get('/dashboard', fn () => view('customer.dashboard'))->name('dashboard');
+    Route::get('/dashboard', fn () => view('customer.dashboard', [
+    'orders' => $samples,
+]))->name('dashboard');
 
     Route::get('/pesanan', fn () => view('customer.orders.index', [
         'orders' => new LengthAwarePaginator($samples, $samples->count(), 10),
@@ -204,6 +193,87 @@ Route::prefix('customer')->name('customer.')->group(function () use ($samples, $
 
 /*
 |--------------------------------------------------------------------------
+| Driver
+|--------------------------------------------------------------------------
+| Mode tampilan seperti customer: data contoh, belum ke database.
+| Koordinat (lat/lng) hanya contoh di sekitar Surabaya.
+*/
+$driverProfile = [
+    'name' => 'Bagas Pratama', 'first' => 'Bagas', 'code' => 'DR-001',
+    'phone' => '081234567800', 'vehicle' => 'Motor', 'plate' => 'L 1234 AB',
+];
+$outlet = ['name' => 'Outlet SWASH', 'lat' => -7.2900, 'lng' => 112.7340];
+
+$driverTasks = collect([
+    ['id' => 131, 'code' => 'SW-00131', 'type' => 'jemput', 'customer' => 'Nadia A.', 'phone' => '081234567891',
+     'address' => 'Jl. Contoh No. 12, Surabaya', 'lat' => -7.2650, 'lng' => 112.7480, 'time' => '09.00',
+     'service' => 'Cuci & Setrika', 'price_per_kg' => 8000, 'weight' => null, 'status' => 'menunggu_dijemput'],
+    ['id' => 129, 'code' => 'SW-00129', 'type' => 'jemput', 'customer' => 'Rafi F.', 'phone' => '081234567892',
+     'address' => 'Jl. Contoh No. 3, Surabaya', 'lat' => -7.2750, 'lng' => 112.7600, 'time' => '14.00',
+     'service' => 'Cuci Kering', 'price_per_kg' => 6000, 'weight' => null, 'status' => 'menunggu_dijemput'],
+    ['id' => 128, 'code' => 'SW-00128', 'type' => 'antar', 'customer' => 'Dina P.', 'phone' => '081234567893',
+     'address' => 'Jl. Contoh No. 7, Surabaya', 'lat' => -7.2850, 'lng' => 112.7250, 'time' => '11.00',
+     'service' => 'Cuci & Setrika', 'price_per_kg' => 8000, 'weight' => 4.5, 'status' => 'siap_diantar'],
+])->map(fn ($row) => (object) $row);
+
+// Data yang dipakai semua halaman driver
+$driverView = function (string $view, array $extra = []) use ($driverTasks, $driverProfile, $outlet) {
+    $mapData = [
+        'outlet' => $outlet,
+        'tasks'  => $driverTasks->sortBy('time')->values()->map(fn ($t) => [
+            'id' => $t->id, 'code' => $t->code, 'type' => $t->type, 'customer' => $t->customer,
+            'time' => $t->time, 'address' => $t->address, 'lat' => $t->lat, 'lng' => $t->lng,
+            'url' => route('driver.tasks.show', $t->id),
+        ])->all(),
+    ];
+
+    return view($view, array_merge([
+        'driverName' => $driverProfile['first'],
+        'driver'     => $driverProfile,
+        'tasks'      => $driverTasks,
+        'outlet'     => $outlet,
+        'mapData'    => $mapData,
+        'doneToday'  => 4,
+    ], $extra));
+};
+
+Route::prefix('driver')->name('driver.')->group(function () use ($driverView, $driverTasks, $info) {
+    Route::get('/dashboard', fn () => $driverView('driver.dashboard'))->name('dashboard');
+    Route::get('/peta', fn () => $driverView('driver.map'))->name('map');
+    Route::get('/pengaturan', fn () => $driverView('driver.settings'))->name('settings');
+
+    Route::get('/tugas/{id}', fn ($id) => $driverView('driver.show', [
+        'task' => $driverTasks->firstWhere('id', (int) $id) ?? abort(404),
+    ]))->name('tasks.show');
+
+    Route::post('/tugas/{id}/status', $info('Mode tampilan: status belum benar-benar disimpan.'))->name('tasks.status');
+    Route::post('/tugas/{id}/berat', $info('Mode tampilan: berat belum benar-benar disimpan.'))->name('tasks.weight');
+
+    // Menerima posisi dari HP driver. Disimpan sementara di cache file (belum database).
+    Route::post('/lokasi', function (Request $request) {
+        $store = Cache::store('file');
+
+        if (!$request->boolean('active', true)) {
+            $store->forget('swash.driver.DR-001');
+            return response()->json(['ok' => true]);
+        }
+
+        $data = $request->validate([
+            'lat'      => 'required|numeric|between:-90,90',
+            'lng'      => 'required|numeric|between:-180,180',
+            'accuracy' => 'nullable|numeric',
+        ]);
+
+        $store->put('swash.driver.DR-001', $data + [
+            'code' => 'DR-001', 'name' => 'Bagas Pratama', 'updated_at' => now()->toIso8601String(),
+        ], now()->addMinutes(5));
+
+        return response()->json(['ok' => true]);
+    })->name('location.store');
+});
+
+/*
+|--------------------------------------------------------------------------
 | Admin
 |--------------------------------------------------------------------------
 */
@@ -212,6 +282,14 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::get('/pesanan', fn () => view('admin.orders'))->name('orders');
     Route::get('/jadwal-pickup', fn () => view('admin.schedules'))->name('schedules');
     Route::get('/driver', fn () => view('admin.drivers'))->name('drivers');
+    Route::post('/driver/tugaskan', fn (Request $request) => back()->with(
+        'success',
+        'Mode tampilan: ' . $request->input('order') . ' ditugaskan ke ' . $request->input('driver') . ' (belum disimpan).'
+    ))->name('drivers.assign');
+    Route::get('/driver/lokasi', fn () => response()->json(
+        array_values(array_filter([Cache::store('file')->get('swash.driver.DR-001')]))
+    ))->name('drivers.locations');
     Route::get('/pembayaran', fn () => view('admin.payments'))->name('payments');
+    Route::get('/shift', fn () => view('admin.shift'))->name('shift');
     Route::get('/laporan', fn () => view('admin.reports'))->name('reports');
 });
