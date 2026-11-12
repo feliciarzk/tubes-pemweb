@@ -1,6 +1,5 @@
 @php
     use Illuminate\Support\Str;
-
     $statusMap = [
         'waiting_acc' => ['label' => 'Perlu Konfirmasi',    'class' => 'status-waiting',    'grup' => 'waiting',  'aksi' => 'ACC & Atur Jam'],
         'weighed'     => ['label' => 'Sudah Ditimbang',     'class' => 'status-onway',      'grup' => 'process',  'aksi' => 'Input Berat'],
