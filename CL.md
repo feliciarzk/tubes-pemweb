@@ -3,7 +3,6 @@
 
 This repository contains a Laravel application. Complete the following setup before working on the user's request.
 
-## Prerequisites
 
 Verify that PHP and Composer are available:
 
