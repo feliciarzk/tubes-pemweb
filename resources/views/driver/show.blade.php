@@ -1,6 +1,5 @@
 @extends('layouts.driver')
 @section('title', $task->code)
-
 @section('content')
     <a href="{{ route('driver.dashboard') }}" class="back-link"><i class="bi bi-arrow-left"></i> Semua tugas</a>
 
