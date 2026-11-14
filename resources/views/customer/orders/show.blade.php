@@ -7,10 +7,10 @@
         'Diantar',
         'Selesai',
     ];
-    // kalau pesanan selesai, semua tahap ditandai selesai
     $current = $order->status === 'selesai' ? count($steps) : $order->status_step;
 
     $rp = fn ($angka) => 'Rp' . number_format($angka, 0, ',', '.');
+    $kg = fn ($berat) => rtrim(rtrim(number_format((float) $berat, 2, ',', '.'), '0'), ',') . ' kg';
     $hargaPerKg = config("swash.services.{$order->service}.price_per_kg", 0);
 
     $detail = [
@@ -21,7 +21,7 @@
         $detail['Pickup'] = $order->pickup_date->translatedFormat('l, d F Y') . ', ' . $order->pickup_time . ' WIB';
     }
     $detail['Alamat'] = $order->address;
-    $detail['Berat'] = $order->weight ? $order->weight . ' kg' : 'Belum ditimbang';
+    $detail['Berat'] = $order->weight ? $kg($order->weight) : 'Belum ditimbang';
     $detail['Total'] = $order->price ? $rp($order->price) : 'Belum ditentukan';
     if ($order->paid_at) {
         $detail['Dibayar'] = $order->paid_at->translatedFormat('d M Y, H.i') . ' (' . config('swash.payment_methods.' . $order->payment_method) . ')';
@@ -36,10 +36,7 @@
 
 @section('content')
     <header class="admin-topbar">
-        <div>
-            <span class="topbar-label">SWASH / PELANGGAN</span>
-            <h1>Pesanan {{ $order->code }}</h1>
-        </div>
+        <h1>Pesanan {{ $order->code }}</h1>
         <div class="topbar-actions">
             <a href="{{ route('customer.orders.index') }}" class="btn btn-ghost">Kembali</a>
         </div>
@@ -61,7 +58,7 @@
         <section class="panel">
             <div class="bill-card">
                 <div class="bill-top">
-                    <div><span>Berat × harga per kg</span><strong>{{ $order->weight }} kg × {{ $rp($hargaPerKg) }}</strong></div>
+                    <div><span>Berat × harga per kg</span><strong>{{ $kg($order->weight) }} × {{ $rp($hargaPerKg) }}</strong></div>
                     <div><span>Total tagihan</span><strong>{{ $rp($order->price) }}</strong></div>
                 </div>
                 <a href="{{ route('customer.payments.index') }}" class="btn btn-primary">Bayar Sekarang</a>
@@ -69,7 +66,7 @@
         </section>
     @elseif ($order->status === 'menunggu_konfirmasi')
         <section class="panel">
-            <p class="status-hint">Berat sudah dicatat atau sedang menunggu penimbangan. Admin akan mengonfirmasi harga sebentar lagi.</p>
+            <p class="status-hint">Menunggu penimbangan dan konfirmasi admin.</p>
         </section>
     @endif
 

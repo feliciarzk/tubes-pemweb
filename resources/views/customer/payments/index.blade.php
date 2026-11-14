@@ -1,51 +1,24 @@
 @php
     $rp = fn ($angka) => 'Rp' . number_format($angka, 0, ',', '.');
+    $methods = collect($methods)->except('tunai')->all();
+    $bank = config('swash.bank') ?: ['name' => 'BCA', 'number' => '1234567890', 'holder' => 'SWASH Laundry'];
 @endphp
 @extends('layouts.customer')
 
 @section('title', 'Pembayaran')
 
-@push('styles')
-    <style>
-        .bill-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; padding: 14px 0; border-top: 1px solid #e4ecee; }
-        .bill-row:first-of-type { border-top: 0; }
-        .bill-row .bill-info { flex: 1; min-width: 180px; }
-        .bill-row .bill-info small { display: block; color: #6b7f8c; }
-
-        /* Dropdown metode pembayaran */
-        .dd { position: relative; }
-        .dd-trigger { display: inline-flex; align-items: center; justify-content: space-between; gap: 12px; min-width: 176px; padding: 10px 12px 10px 14px; border: 0; border-radius: 10px; background: #eef4f5; color: #12303f; font: inherit; cursor: pointer; transition: background .15s, box-shadow .15s; }
-        .dd-trigger:hover { background: #e2eef0; }
-        .dd-trigger:focus { outline: none; }
-        .dd-trigger:focus-visible, .dd-trigger[aria-expanded="true"] { background: #fff; box-shadow: 0 0 0 2px rgba(10, 158, 155, .35), 0 2px 8px rgba(18, 48, 63, .08); }
-        .dd-trigger.dd-error { background: #fef2f2; box-shadow: 0 0 0 2px rgba(229, 72, 77, .45); }
-        .dd-label.is-placeholder { color: #6b7f8c; }
-        .dd-chevron { width: 16px; height: 16px; flex: none; color: #6b7f8c; transition: transform .2s; }
-        .dd-trigger[aria-expanded="true"] .dd-chevron { transform: rotate(180deg); }
-
-        .dd-menu { position: absolute; top: calc(100% + 8px); right: 0; z-index: 30; min-width: 100%; margin: 0; padding: 6px; list-style: none; background: #fff; border-radius: 12px; box-shadow: 0 12px 32px rgba(18, 48, 63, .16), 0 0 0 1px rgba(18, 48, 63, .04); animation: dd-pop .14s ease-out; }
-        .dd-menu[hidden] { display: none; }
-        .dd-item { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 12px; border-radius: 8px; color: #12303f; white-space: nowrap; cursor: pointer; }
-        .dd-item:hover, .dd-item:focus { background: #eef7f7; outline: none; }
-        .dd-item[aria-selected="true"] { color: #087f81; font-weight: 600; }
-        .dd-item[aria-selected="true"]::after { content: "✓"; font-size: 13px; }
-        @keyframes dd-pop { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
-    </style>
-@endpush
-
 @section('content')
     <header class="admin-topbar">
-        <div>
-            <span class="topbar-label">SWASH / PELANGGAN</span>
-            <h1>Pembayaran</h1>
-        </div>
+        <h1>Pembayaran</h1>
     </header>
 
     <section class="panel">
         <div class="panel-heading"><h3>Menunggu dibayar</h3></div>
 
         @forelse ($unpaid as $order)
-            <form method="POST" action="{{ route('customer.payments.pay', $order) }}" class="bill-row">
+            <form method="POST" action="{{ route('customer.payments.pay', $order) }}" class="bill-row"
+                  data-action="{{ route('customer.payments.pay', $order) }}"
+                  data-code="{{ $order->code }}" data-service="{{ $order->service_name }}" data-total="{{ $rp($order->price) }}">
                 @csrf
                 <div class="bill-info">
                     <strong>{{ $order->code }}</strong> · {{ $order->service_name }}
@@ -69,7 +42,7 @@
                 <button type="submit" class="btn btn-primary btn-sm">Bayar</button>
             </form>
         @empty
-            <p>Tidak ada tagihan. Pesanan yang sudah ditimbang dan dikonfirmasi admin akan muncul di sini.</p>
+            <p>Tidak ada tagihan.</p>
         @endforelse
     </section>
 
@@ -88,11 +61,130 @@
             <p>Belum ada pembayaran.</p>
         @endforelse
     </section>
+    {{-- Muncul setelah klik Bayar --}}
+    <div class="pay-modal" id="pay-modal" role="dialog" aria-modal="true" aria-labelledby="pay-title" hidden>
+        <div class="pay-backdrop" data-close></div>
+
+        <form method="POST" enctype="multipart/form-data" class="pay-card" id="pay-form" tabindex="-1">
+            @csrf
+            <input type="hidden" name="payment_method" id="pay-method">
+
+            <div class="pay-head">
+                <div>
+                    <h3 id="pay-title">Konfirmasi pembayaran</h3>
+                    <small id="pay-order"></small>
+                </div>
+                <button type="button" class="pay-x" data-close aria-label="Tutup">&times;</button>
+            </div>
+
+            <div class="pay-total"><span>Total</span><strong id="pay-total"></strong></div>
+
+            <div class="transfer-box" id="pay-transfer">
+                <div>
+                    <span>{{ $bank['name'] }}</span>
+                    <strong>{{ $bank['number'] }}</strong>
+                    <small>a.n. {{ $bank['holder'] }}</small>
+                </div>
+                <button type="button" class="btn btn-ghost btn-sm" data-copy="{{ $bank['number'] }}">Salin</button>
+            </div>
+
+            <div class="qris-box" id="pay-qris" hidden>
+                <div class="qris-img">QRIS</div>
+                <small>Scan dengan aplikasi e-wallet atau m-banking.</small>
+            </div>
+
+            <div class="pay-field" id="pay-sender">
+                <label for="sender_name">Nama pengirim</label>
+                <input id="sender_name" name="sender_name" placeholder="Sesuai nama di rekening">
+            </div>
+
+            <div class="pay-field">
+                <label for="proof">Bukti pembayaran</label>
+                <label class="upload" for="proof">
+                    <input id="proof" type="file" name="proof" accept="image/*,.pdf" required>
+                    <img id="proof-preview" alt="Pratinjau bukti" hidden>
+                    <span id="proof-text">Pilih file atau seret ke sini</span>
+                    <small>JPG, PNG, atau PDF. Maksimal 2 MB.</small>
+                </label>
+                <small class="pay-error" id="proof-error" hidden></small>
+            </div>
+
+            <div class="pay-field">
+                <label for="pay_note">Catatan (opsional)</label>
+                <input id="pay_note" name="note">
+            </div>
+
+            <div class="pay-actions">
+                <button type="button" class="btn btn-ghost" data-close>Batal</button>
+                <button type="submit" class="btn btn-primary">Kirim bukti</button>
+            </div>
+        </form>
+    </div>
 @endsection
 
 @push('scripts')
     <script>
         (function () {
+            var modal = document.getElementById('pay-modal');
+            var payForm = document.getElementById('pay-form');
+            var proof = document.getElementById('proof');
+            var proofText = document.getElementById('proof-text');
+            var proofPreview = document.getElementById('proof-preview');
+            var proofError = document.getElementById('proof-error');
+            var MAX_SIZE = 2 * 1024 * 1024;
+
+            function resetProof() {
+                proofText.textContent = 'Pilih file atau seret ke sini';
+                proofPreview.hidden = true;
+                proofPreview.removeAttribute('src');
+                proofError.hidden = true;
+            }
+
+            function openModal(row, method) {
+                var isTransfer = method === 'transfer';
+                payForm.action = row.dataset.action;
+                document.getElementById('pay-order').textContent = row.dataset.code + ' · ' + row.dataset.service;
+                document.getElementById('pay-total').textContent = row.dataset.total;
+                document.getElementById('pay-method').value = method;
+                document.getElementById('pay-transfer').hidden = !isTransfer;
+                document.getElementById('pay-sender').hidden = !isTransfer;
+                document.getElementById('pay-qris').hidden = isTransfer;
+                modal.hidden = false;
+                document.body.classList.add('modal-open');
+                payForm.focus();
+            }
+
+            function closeModal() {
+                modal.hidden = true;
+                document.body.classList.remove('modal-open');
+                payForm.reset();
+                resetProof();
+            }
+
+            modal.querySelectorAll('[data-close]').forEach(function (el) {
+                el.addEventListener('click', closeModal);
+            });
+
+            proof.addEventListener('change', function () {
+                var file = proof.files[0];
+                proofError.hidden = true;
+                if (!file) { resetProof(); return; }
+                if (file.size > MAX_SIZE) {
+                    proof.value = '';
+                    resetProof();
+                    proofError.textContent = 'Ukuran file maksimal 2 MB.';
+                    proofError.hidden = false;
+                    return;
+                }
+                proofText.textContent = file.name;
+                if (file.type.indexOf('image/') === 0) {
+                    proofPreview.src = URL.createObjectURL(file);
+                    proofPreview.hidden = false;
+                } else {
+                    proofPreview.hidden = true;
+                }
+            });
+
             var dropdowns = document.querySelectorAll('[data-dropdown]');
 
             function closeAll() {
@@ -162,16 +254,31 @@
 
                 // wajib pilih metode sebelum bayar
                 dd.closest('form').addEventListener('submit', function (e) {
+                    e.preventDefault();
                     if (!input.value) {
-                        e.preventDefault();
                         trigger.classList.add('dd-error');
                         open();
+                        return;
                     }
+                    openModal(this, input.value);
+                });
+            });
+
+            document.querySelectorAll('[data-copy]').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    navigator.clipboard.writeText(btn.dataset.copy).then(function () {
+                        btn.textContent = 'Tersalin';
+                        setTimeout(function () { btn.textContent = 'Salin'; }, 1500);
+                    });
                 });
             });
 
             document.addEventListener('click', closeAll);
-            document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeAll(); });
+            document.addEventListener('keydown', function (e) {
+                if (e.key !== 'Escape') return;
+                closeAll();
+                if (!modal.hidden) closeModal();
+            });
         })();
     </script>
 @endpush

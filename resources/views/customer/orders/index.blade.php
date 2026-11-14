@@ -16,9 +16,6 @@
             <span class="topbar-label">SWASH / PELANGGAN</span>
             <h1>Pesanan Saya</h1>
         </div>
-        <div class="topbar-actions">
-            <a href="{{ route('customer.orders.create') }}" class="btn btn-primary">Buat Pesanan</a>
-        </div>
     </header>
 
     <section class="panel">

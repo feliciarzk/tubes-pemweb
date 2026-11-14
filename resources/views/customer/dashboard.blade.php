@@ -9,13 +9,16 @@
         'status' => 'menunggu_pembayaran',
         'layanan' => 'Cuci & Setrika',
         'tipe' => 'Antar Jemput',
-        'jadwal' => 'Jumat, 23 Okt 2026 · 09.00–10.00 WIB',
+        'tanggal' => 'Selasa, 17 Nov 2026',
+        'tanggal_singkat' => '17 Nov',
+        'jam' => '09.00–10.00 WIB',
         'alamat' => 'Jl. Contoh No. 12, Kel. Contoh',
         'berat' => 3.5,
         'tagihan' => 35000,
-        'estimasi_selesai' => '25 Okt 2026',
-        'driver' => ['nama' => 'Budi S.', 'kendaraan' => 'Motor · B 1234 XX', 'telepon' => '081234567890'],
+        'estimasi_selesai' => '19 Nov 2026',
+        'driver' => ['nama' => 'Budi S.', 'kendaraan' => 'Motor · B 1234 XX', 'telepon' => '081915854566'],
     ];
+    $order['jadwal'] = $order['tanggal'] . ' · ' . $order['jam'];
 
     $rp = fn ($angka) => 'Rp' . number_format($angka, 0, ',', '.');
     $kg = number_format($order['berat'], 1, ',', '.') . ' kg';
@@ -24,18 +27,17 @@
 
     // step = jumlah tahap yang sudah selesai (7 = semua selesai)
     $statusMap = [
-        'menunggu_konfirmasi' => ['step' => 0, 'label' => 'Menunggu Konfirmasi', 'class' => 'status-waiting', 'hint' => 'Admin sedang mengecek pesananmu. Kamu akan dapat notifikasi saat jadwal dan jam kedatangan driver sudah dikonfirmasi.'],
-        'dijadwalkan' => ['step' => 1, 'label' => 'Dijadwalkan', 'class' => 'status-scheduled', 'hint' => 'Jadwal sudah dikonfirmasi. Siapkan cucianmu dan pastikan HP aktif saat driver tiba.'],
-        'driver_menuju' => ['step' => 2, 'label' => 'Driver Menuju Lokasi', 'class' => 'status-onway', 'hint' => 'Driver sedang menuju lokasimu. Cucian akan ditimbang di tempat.'],
-        'menunggu_pembayaran' => ['step' => 3, 'label' => 'Menunggu Pembayaran', 'class' => 'status-payment', 'hint' => 'Cucian sudah ditimbang. Pesanan mulai diproses setelah pembayaran dikonfirmasi.'],
-        'diproses' => ['step' => 4, 'label' => 'Diproses', 'class' => 'status-processing', 'hint' => 'Cucianmu sedang dikerjakan, biasanya 1–2 hari.'],
-        'dalam_pengantaran' => ['step' => 5, 'label' => 'Dalam Pengantaran', 'class' => 'status-delivery', 'hint' => 'Driver sedang mengantar cucianmu. Pantau posisinya di peta.'],
-        'selesai' => ['step' => 7, 'label' => 'Selesai', 'class' => 'status-complete', 'hint' => 'Pesanan selesai. Terima kasih sudah memakai SWASH!'],
+        'menunggu_konfirmasi' => ['step' => 0, 'label' => 'Menunggu Konfirmasi', 'class' => 'status-waiting', 'hint' => 'Pesananmu sedang dicek admin.'],
+        'dijadwalkan' => ['step' => 1, 'label' => 'Dijadwalkan', 'class' => 'status-scheduled', 'hint' => 'Jadwal dikonfirmasi. Siapkan cucianmu.'],
+        'driver_menuju' => ['step' => 2, 'label' => 'Driver Menuju Lokasi', 'class' => 'status-onway', 'hint' => 'Driver sedang menuju lokasimu.'],
+        'menunggu_pembayaran' => ['step' => 3, 'label' => 'Menunggu Pembayaran', 'class' => 'status-payment', 'hint' => 'Cucian sudah ditimbang. Bayar untuk mulai diproses.'],
+        'diproses' => ['step' => 4, 'label' => 'Diproses', 'class' => 'status-processing', 'hint' => 'Cucianmu sedang dikerjakan.'],
+        'dalam_pengantaran' => ['step' => 5, 'label' => 'Dalam Pengantaran', 'class' => 'status-delivery', 'hint' => 'Driver sedang mengantar cucianmu.'],
+        'selesai' => ['step' => 7, 'label' => 'Selesai', 'class' => 'status-complete', 'hint' => 'Pesanan selesai. Terima kasih!'],
     ];
     $status = $statusMap[$order['status']];
     $stepIndex = $status['step'];
 
-    // Class warna status untuk tabel riwayat (label diambil dari $o->status_label)
     $riwayatStatus = [
         'menunggu_pickup'     => 'status-scheduled',
         'menunggu_konfirmasi' => 'status-waiting',
@@ -46,10 +48,10 @@
     ];
 
     $stats = [
-        ['Pesanan Aktif', '1', 'Sedang berjalan', ''],
-        ['Jadwal Terdekat', '23 Okt', '09.00–10.00 WIB', 'stat-money'],
-        ['Perlu Dibayar', $rp($order['tagihan']), '1 pesanan menunggu', 'stat-money'],
-        ['Total Pesanan', '12', 'Sejak bergabung', ''],
+        ['Pesanan Aktif', '1', '', ''],
+        ['Jadwal Terdekat', $order['tanggal_singkat'], $order['jam'], 'stat-money'],
+        ['Perlu Dibayar', $rp($order['tagihan']), '', 'stat-money'],
+        ['Total Pesanan', '12', '', ''],
     ];
 
     $detail = [
@@ -63,10 +65,21 @@
         $detail['Tagihan'] = $rp($order['tagihan']);
     }
 
-    $layanan = [
-        ['nama' => 'Cuci & Setrika', 'desc' => 'Dicuci bersih lalu disetrika rapi, siap dipakai.', 'harga' => 'Rp10.000/kg', 'slug' => 'cuci-setrika'],
-        ['nama' => 'Cuci Kering', 'desc' => 'Dicuci dan dikeringkan, tanpa setrika.', 'harga' => 'Rp8.000/kg', 'slug' => 'cuci-kering'],
-        ['nama' => 'Setrika Saja', 'desc' => 'Punya baju bersih yang butuh dirapikan.', 'harga' => 'Rp6.000/kg', 'slug' => 'setrika-saja'],
+    $notifikasi = [
+        ['tipe' => 'tagihan',     'judul' => 'Cucian sudah ditimbang',  'pesan' => $order['kode'] . ' · ' . $kg . '. Tagihan ' . $rp($order['tagihan']) . ' menunggu pembayaran.', 'waktu' => 'Hari ini, 08.15', 'baru' => true],
+        ['tipe' => 'jadwal',      'judul' => 'Jadwal dikonfirmasi',     'pesan' => 'Penjemputan ' . $order['jadwal'] . '.', 'waktu' => 'Kemarin, 16.40', 'baru' => false],
+        ['tipe' => 'dibuat',      'judul' => 'Pesanan berhasil dibuat', 'pesan' => $order['kode'] . ' · ' . $order['layanan'] . ', ' . $order['tipe'] . '.', 'waktu' => 'Kemarin, 14.05', 'baru' => false],
+        ['tipe' => 'selesai',     'judul' => 'Pesanan selesai',         'pesan' => 'SW-00127 sudah diantar. Terima kasih!', 'waktu' => '12 Nov, 18.30', 'baru' => false],
+        ['tipe' => 'dibayar',     'judul' => 'Pembayaran berhasil',     'pesan' => 'Pesanan SW-00127 sudah dibayar Rp28.000.', 'waktu' => '12 Nov, 10.22', 'baru' => false],
+    ];
+    $belumDibaca = count(array_filter($notifikasi, fn ($n) => $n['baru']));
+
+    $notifIkon = [
+        'tagihan' => '<path d="M4 4h16v16l-3-2-3 2-2-2-2 2-3-2-3 2z"/><path d="M8 9h8M8 13h5"/>',
+        'jadwal'  => '<rect x="3" y="4" width="18" height="18" rx="3"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+        'dibuat'  => '<path d="M12 5v14M5 12h14"/>',
+        'dibayar' => '<rect x="2" y="5" width="20" height="14" rx="3"/><path d="M2 10h20"/>',
+        'selesai' => '<path d="M20 6 9 17l-5-5"/>',
     ];
 @endphp
 @extends('layouts.customer')
@@ -77,27 +90,37 @@
     @if ($order['status'] === 'dalam_pengantaran')
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
     @endif
-    <style>
-        .service-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-top: 16px; }
-        .service-card { display: flex; flex-direction: column; gap: 6px; padding: 18px; border: 1px solid #e4ecee; border-radius: 12px; background: #fff; color: #12303f; text-decoration: none; }
-        .service-card:hover { border-color: #0a9e9b; }
-        .service-card p { margin: 0; color: #6b7f8c; font-size: 14px; }
-        .service-card span { font-size: 13px; color: #6b7f8c; }
-        .service-card .service-cta { margin-top: auto; padding-top: 8px; color: #087f81; font-weight: 600; }
-    </style>
 @endpush
 
 @section('content')
     <header class="admin-topbar">
-        <div>
-            <span class="topbar-label">SWASH / PELANGGAN</span>
-            <h1>Dashboard</h1>
-        </div>
-        <div class="topbar-actions">
-            <a href="#notifikasi" class="icon-button" aria-label="Notifikasi">
+        <h1>Dashboard</h1>
+        <div class="topbar-actions notif">
+            <button type="button" class="icon-button" id="notif-toggle" aria-label="Notifikasi" aria-haspopup="true" aria-expanded="false" aria-controls="notif-panel">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
-                <span class="notif-count">1</span>
-            </a>
+                <span class="notif-count" @if (! $belumDibaca) hidden @endif>{{ $belumDibaca }}</span>
+            </button>
+
+            <div class="notif-panel" id="notif-panel" hidden>
+                <div class="notif-head">
+                    <strong>Notifikasi</strong>
+                    <button type="button" class="text-action" id="notif-read">Tandai dibaca</button>
+                </div>
+                <ul class="notif-list">
+                    @foreach ($notifikasi as $n)
+                        <li class="notif-item {{ $n['baru'] ? 'unread' : '' }}">
+                            <span class="notif-icon notif-{{ $n['tipe'] }}">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{!! $notifIkon[$n['tipe']] !!}</svg>
+                            </span>
+                            <div>
+                                <strong>{{ $n['judul'] }}</strong>
+                                <p>{{ $n['pesan'] }}</p>
+                                <small>{{ $n['waktu'] }}</small>
+                            </div>
+                        </li>
+                    @endforeach
+                </ul>
+            </div>
         </div>
     </header>
 
@@ -106,11 +129,7 @@
     @endif
 
     <section class="welcome-section">
-        <div>
-            <p class="welcome-label">SELAMAT DATANG</p>
-            <h2>Halo, {{ $firstName }}!</h2>
-            <p>Cucian numpuk? Buat pesanan, kami yang urus sisanya.</p>
-        </div>
+        <h2>Halo, {{ $firstName }}!</h2>
         <a href="{{ route('customer.orders.create') }}" class="primary-button">Buat Pesanan</a>
     </section>
 
@@ -119,7 +138,7 @@
             <article class="stat-card">
                 <div class="stat-heading"><span>{{ $judul }}</span></div>
                 <strong class="stat-value {{ $kelas }}">{{ $nilai }}</strong>
-                <p>{{ $ket }}</p>
+                @if ($ket)<p>{{ $ket }}</p>@endif
             </article>
         @endforeach
     </section>
@@ -127,7 +146,7 @@
     <section class="dashboard-grid">
         <article class="panel">
             <div class="panel-heading">
-                <div><span class="panel-eyebrow">PESANAN AKTIF</span><h3>Lacak Pesananmu</h3></div>
+                <div><h3>Lacak Pesananmu</h3></div>
                 <span class="order-status {{ $status['class'] }}">{{ $status['label'] }}</span>
             </div>
 
@@ -157,7 +176,7 @@
                 <div class="bill-card">
                     <div class="bill-top">
                         <div><span>Berat cucian</span><strong>{{ $kg }}</strong></div>
-                        <div><span>Estimasi tagihan</span><strong>{{ $rp($order['tagihan']) }}</strong></div>
+                        <div><span>Total tagihan</span><strong>{{ $rp($order['tagihan']) }}</strong></div>
                     </div>
                     <a href="{{ route('customer.payments.index') }}" class="btn btn-primary">Bayar Sekarang</a>
                 </div>
@@ -171,7 +190,7 @@
                         <small>{{ $order['driver']['kendaraan'] }}</small>
                     </div>
                     <div class="driver-actions">
-                        <a href="#" class="btn btn-ghost btn-sm">Chat</a>
+                        <a href="https://wa.me/62{{ ltrim($order['driver']['telepon'], '0') }}" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">Chat</a>
                         <a href="tel:{{ $order['driver']['telepon'] }}" class="btn btn-primary btn-sm">Telepon</a>
                     </div>
                 </div>
@@ -179,7 +198,7 @@
         </article>
 
         <article class="panel">
-            <div class="panel-heading"><div><span class="panel-eyebrow">DETAIL</span><h3>Detail Pesanan</h3></div></div>
+            <div class="panel-heading"><div><h3>Detail Pesanan</h3></div></div>
             <div class="detail-list">
                 @foreach ($detail as $label => $isi)
                     <div class="detail-row"><span>{{ $label }}</span><strong>{{ $isi }}</strong></div>
@@ -190,34 +209,20 @@
 
     @if ($order['status'] === 'dalam_pengantaran')
         <section class="panel">
-            <div class="panel-heading"><div><span class="panel-eyebrow">PENGANTARAN</span><h3>Posisi Driver</h3></div></div>
+            <div class="panel-heading"><div><h3>Posisi Driver</h3></div></div>
             <div id="map" class="map-box"></div>
-            <p class="demo-note">Posisi pada peta masih contoh.</p>
         </section>
     @endif
 
-    <section class="panel">
-        <div class="panel-heading"><div><span class="panel-eyebrow">LAYANAN</span><h3>Mau Cuci Apa Hari Ini?</h3></div></div>
-        <div class="service-grid">
-            @foreach ($layanan as $l)
-                <a href="{{ route('customer.orders.create', ['layanan' => $l['slug']]) }}" class="service-card">
-                    <strong>{{ $l['nama'] }}</strong>
-                    <p>{{ $l['desc'] }}</p>
-                    <span>{{ $l['harga'] }}</span>
-                    <span class="service-cta">Pilih layanan</span>
-                </a>
-            @endforeach
-        </div>
-    </section>
 
     <section class="panel orders-panel">
         <div class="panel-heading orders-heading">
-            <div><span class="panel-eyebrow">PERLU TINDAK LANJUT</span><h3>Pesanan Berjalan</h3></div>
+            <div><h3>Pesanan Berjalan</h3></div>
             <a href="{{ route('customer.orders.index') }}" class="text-action">Semua Pesanan</a>
         </div>
 
         @if ($aktif->isEmpty())
-            <p class="status-hint">Tidak ada pesanan yang perlu ditindaklanjuti saat ini.</p>
+            <p class="status-hint">Belum ada pesanan berjalan.</p>
         @else
             <div class="table-responsive">
                 <table class="orders-table">
@@ -226,16 +231,13 @@
                     </thead>
                     <tbody>
                         @foreach ($aktif as $o)
-                            @php
-                                $statusClass = $riwayatStatus[$o->status] ?? '';
-                            @endphp
                             <tr>
                                 <td class="order-id">{{ $o->code }}</td>
                                 <td>{{ $o->service_name }}</td>
                                 <td>{{ $o->delivery_label }}</td>
-                                <td>{{ ($o->pickup_date ?? $o->created_at)->translatedFormat('d M Y') }}</td>
+                                <td>{{ \Carbon\Carbon::parse($o->pickup_date ?? $o->created_at)->translatedFormat('d M Y') }}</td>
                                 <td>{{ $o->price ? $rp($o->price) : 'Belum ditentukan' }}</td>
-                                <td><span class="order-status {{ $statusClass }}">{{ $o->status_label }}</span></td>
+                                <td><span class="order-status {{ $riwayatStatus[$o->status] ?? '' }}">{{ $o->status_label }}</span></td>
                                 <td>
                                     @if ($o->status === 'menunggu_pembayaran')
                                         <a href="{{ route('customer.payments.index') }}" class="btn btn-primary btn-sm">Bayar</a>
@@ -253,6 +255,25 @@
 @endsection
 
 @push('scripts')
+    <script>
+        (() => {
+            const toggle = document.getElementById('notif-toggle');
+            const panel = document.getElementById('notif-panel');
+            const badge = toggle.querySelector('.notif-count');
+            const setOpen = open => {
+                panel.hidden = !open;
+                toggle.setAttribute('aria-expanded', open);
+            };
+            toggle.addEventListener('click', e => { e.stopPropagation(); setOpen(panel.hidden); });
+            panel.addEventListener('click', e => e.stopPropagation());
+            document.addEventListener('click', () => setOpen(false));
+            document.addEventListener('keydown', e => { if (e.key === 'Escape') setOpen(false); });
+            document.getElementById('notif-read').addEventListener('click', () => {
+                panel.querySelectorAll('.unread').forEach(el => el.classList.remove('unread'));
+                if (badge) badge.hidden = true;
+            });
+        })();
+    </script>
     @if ($order['status'] === 'dalam_pengantaran')
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
         <script>

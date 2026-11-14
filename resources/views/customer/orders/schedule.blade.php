@@ -8,10 +8,7 @@
 
 @section('content')
     <header class="admin-topbar">
-        <div>
-            <span class="topbar-label">SWASH / PELANGGAN</span>
-            <h1>Antar Jemput</h1>
-        </div>
+        <h1>Antar Jemput</h1>
     </header>
 
     @php
@@ -49,20 +46,40 @@
             'selesai'  => 'Laporanmu sudah ditindaklanjuti admin.',
         ];
 
+        // 95 menit -> "1 jam 35 menit", 25 menit -> "25 menit", 30 jam -> "1 hari 6 jam"
+        $durasi = function (int $menit): string {
+            $jam = intdiv($menit, 60);
+            $sisa = $menit % 60;
+            if ($jam >= 24) {
+                $hari = intdiv($jam, 24);
+                $jamSisa = $jam % 24;
+                return $hari . ' hari' . ($jamSisa ? ' ' . $jamSisa . ' jam' : '');
+            }
+            if ($jam > 0) {
+                return $jam . ' jam' . ($sisa ? ' ' . $sisa . ' menit' : '');
+            }
+            return max(1, $sisa) . ' menit';
+        };
+
         // data palsu supaya tampilan bisa dilihat tanpa backend. ganti status lewat ?status=...
         if ($demo) {
-            $demoStatus = request('status', 'dijemput');
+            $demoStatus = request('status', 'diantar');
+            // sudah bayar kalau status sudah lewat tahap pembayaran; ?telat=1 untuk simulasi terlambat
+            $demoPaid = in_array($demoStatus, ['diproses', 'siap_antar', 'diantar', 'selesai'])
+                ? now()->subHours(request()->has('telat') ? 30 : 5)
+                : null;
             $orders = collect([(object) [
-                'id' => 1,
-                'code' => 'SWH-0001',
-                'service_name' => 'Cuci Kiloan Reguler',
+                'id' => 132,
+                'code' => 'SW-00132',
+                'service_name' => 'Cuci & Setrika',
                 'service_type' => 'antar_jemput',
                 'status' => $demoStatus,
                 'pickup_date' => now(),
                 'pickup_time' => '10:00',
-                'address' => 'Jl. Ketintang No. 12, Surabaya',
-                'weight_kg' => 3,
-                'total_price' => 21000,
+                'address' => 'Jl. Contoh No. 1, Surabaya',
+                'weight_kg' => 4.5,
+                'total_price' => 36000,
+                'paid_at' => $demoPaid,
                 'driver_arrived' => false,
                 'driver_lat' => request()->has('nolokasi') ? null : -7.2975,
                 'driver_lng' => 112.7390,
@@ -70,7 +87,7 @@
                 'pickup_lng' => 112.7283,
                 'delivery_lat' => -7.3126,
                 'delivery_lng' => 112.7283,
-                'driver' => (object) ['name' => 'Budi Santoso', 'phone' => '081234567890'],
+                'driver' => (object) ['name' => 'Bagas Pratama', 'phone' => '081915854566'],
             ]]);
         }
     @endphp
@@ -80,6 +97,8 @@
             Mode demo (data palsu). Lihat tahap lain:
             <a href="?status=dijemput">dijemput</a>,
             <a href="?status=menunggu_pembayaran">menunggu pembayaran</a>,
+            <a href="?status=diproses">diproses</a>,
+            <a href="?status=diproses&amp;telat=1">terlambat</a>,
             <a href="?status=diantar">diantar</a>,
             <a href="?status=selesai">selesai</a>,
             <a href="?status=dijemput&amp;nolokasi=1">lokasi driver belum ada</a>,
@@ -98,24 +117,39 @@
             $isDelivering = $order->status === 'diantar';
             $showDriver = $driver && in_array($order->status, ['dijemput', 'diantar']);
             $showMap = $showDriver && $order->driver_lat && $order->driver_lng;
-            $chatAktif = $driver && in_array($order->status, ['dijemput', 'diantar']);
-            $bisaChat = $driver && in_array($order->status, ['dijemput', 'diantar', 'selesai']); // selesai: riwayat saja
             $reportStatus = $demo ? request('laporan') : ($order->driverReport->status ?? null); // TODO backend
             $destLat = $isDelivering ? $order->delivery_lat : $order->pickup_lat;
             $destLng = $isDelivering ? $order->delivery_lng : $order->pickup_lng;
 
-            // link; di mode demo semuanya dimatikan karena data bukan dari database
-            $urlShow = $demo ? '#' : route('customer.orders.show', $order);
-            $urlPay = $demo ? '#' : route('customer.payments.index');
+            // link: detail & bayar selalu ke halaman asli; di mode demo yang butuh backend dimatikan
+            $urlShow = route('customer.orders.show', $order->id);
+            $urlPay = route('customer.payments.index');
             $urlTrack = $demo ? '' : route('customer.orders.tracking', $order);
-            $urlChat = $demo ? '' : route('customer.orders.chat', $order);       // TODO backend
             $urlReport = $demo ? '#' : route('customer.orders.report', $order); // TODO backend
+
+            // target pengantaran = 1 hari setelah pembayaran berhasil
+            $paidAt = $order->paid_at ? \Carbon\Carbon::parse($order->paid_at) : null;
+            $target = $paidAt?->copy()->addDay();
+            $isLate = $target && $order->status !== 'selesai' && now()->greaterThan($target);
+            $teksSelisih = $target ? $durasi(max(1, (int) floor(abs($target->diffInMinutes(now()))))) : '';
+
+            // chat langsung ke WhatsApp driver (driver ditugaskan oleh admin)
+            $waNomor = preg_replace('/\D/', '', $driver?->phone ?? '');
+            $waNomor = str_starts_with($waNomor, '0') ? '62' . substr($waNomor, 1) : $waNomor;
+            $urlChat = $driver
+                ? 'https://wa.me/' . $waNomor . '?text=' . rawurlencode('Halo kak ' . $driver->name . ', saya pelanggan SWASH. Pesanan ' . $order->code . '.')
+                : '#';
         @endphp
 
         <section class="panel trip-card">
             <div class="trip-head">
                 <div class="order-id">{{ $order->code }}<br><small>{{ $order->service_name }}</small></div>
-                <span class="order-status {{ $statusClass[$order->status] ?? '' }}">{{ $flow[$order->status] ?? $order->status }}</span>
+                <div class="trip-badges">
+                    @if ($isLate)
+                        <span class="order-status status-late">Terlambat</span>
+                    @endif
+                    <span class="order-status {{ $statusClass[$order->status] ?? '' }}">{{ $flow[$order->status] ?? $order->status }}</span>
+                </div>
             </div>
 
             <div class="stepper" aria-label="Progres pesanan">
@@ -123,6 +157,20 @@
                     <span class="{{ $current !== false && $i <= $current ? 'done' : '' }}" title="{{ $flow[$key] }}"></span>
                 @endforeach
             </div>
+
+            @if ($target)
+                <div class="eta-box {{ $isLate ? 'late' : '' }}">
+                    <span>{{ $order->status === 'selesai' ? 'Target pengantaran' : 'Estimasi diantar' }}</span>
+                    <strong>{{ $target->translatedFormat('l, d M Y') }}, {{ $target->format('H.i') }} WIB</strong>
+                    @if ($isLate)
+                        <small>Terlambat {{ $teksSelisih }} dari target.</small>
+                    @elseif ($order->status !== 'selesai')
+                        <small>Sisa waktu {{ $teksSelisih }}</small>
+                    @endif
+                </div>
+            @elseif ($order->status !== 'selesai')
+                <p class="eta-note">Diantar 1 hari setelah pembayaran.</p>
+            @endif
 
             @if ($order->service_type === 'antar_jemput' && $order->status === 'menunggu_jemput')
                 <p>Jemput: {{ $order->pickup_date->translatedFormat('l, d M Y') }}, {{ $order->pickup_time }} WIB<br>
@@ -147,7 +195,7 @@
             @endif
 
             @if ($showMap)
-                <p class="trip-eta" id="eta-{{ $order->id }}"></p>
+                <p class="trip-eta"><span class="live-dot"></span><span id="eta-{{ $order->id }}"></span></p>
                 <div class="map-box"
                      id="map-{{ $order->id }}"
                      data-order="{{ $order->id }}"
@@ -163,44 +211,16 @@
             @if ($showDriver)
                 <div class="driver-card">
                     <div class="driver-avatar">{{ strtoupper(substr($driver->name, 0, 1)) }}</div>
-                    <div class="driver-info"><strong>{{ $driver->name }}</strong><br><small>Driver SWASH</small></div>
+                    <div class="driver-info"><strong>{{ $driver->name }}</strong><br><small>Driver SWASH · ditugaskan admin</small></div>
                     <div class="driver-actions">
-                        <button type="button" class="btn btn-ghost btn-sm" data-chat="{{ $order->id }}">Chat</button>
+                        <a href="{{ $urlChat }}" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">Chat</a>
                         <a href="tel:{{ $driver->phone }}" class="btn btn-primary btn-sm">Telepon</a>
                     </div>
                 </div>
             @endif
 
-            @if ($bisaChat)
-                <dialog class="chat-box" id="chat-{{ $order->id }}"
-                        data-order="{{ $order->id }}"
-                        data-driver="{{ $driver->name }}"
-                        data-readonly="{{ $chatAktif ? 0 : 1 }}"
-                        data-url="{{ $urlChat }}"
-                        data-token="{{ csrf_token() }}">
-                    <div class="chat-head">
-                        <strong>{{ $driver->name }}</strong>
-                        <button type="button" data-close aria-label="Tutup">&times;</button>
-                    </div>
-                    <div class="chat-body"></div>
-                    @if ($chatAktif)
-                        <div class="chat-quick">
-                            <button type="button">Saya sudah di rumah</button>
-                            <button type="button">Tunggu sebentar ya</button>
-                            <button type="button">Titip ke satpam</button>
-                        </div>
-                        <form class="chat-form">
-                            <input type="text" name="body" placeholder="Tulis pesan" maxlength="500" required autocomplete="off">
-                            <button class="btn btn-primary">Kirim</button>
-                        </form>
-                    @else
-                        <p class="chat-closed">Chat ditutup karena pesanan sudah selesai.</p>
-                    @endif
-                </dialog>
-            @endif
-
             @if ($driver)
-                <dialog class="chat-box" id="report-{{ $order->id }}">
+                <dialog class="report-dialog" id="report-{{ $order->id }}">
                     <form method="POST" action="{{ $urlReport }}" class="report-form" data-report="{{ $order->id }}">
                         @csrf
                         <h3>Laporkan driver</h3>
@@ -225,9 +245,6 @@
 
             <div class="trip-links">
                 <a href="{{ $urlShow }}" class="text-action">Detail pesanan</a>
-                @if ($bisaChat && ! $chatAktif)
-                    <button type="button" class="text-action" data-chat="{{ $order->id }}">Lihat chat</button>
-                @endif
                 @if ($driver)
                     <button type="button" class="text-action text-danger" id="report-btn-{{ $order->id }}" data-open="report-{{ $order->id }}" @if ($reportStatus) hidden @endif>Laporkan driver</button>
                 @endif
@@ -249,16 +266,9 @@
         const DEMO = {{ $demo ? 'true' : 'false' }};
 
         /*
-         * Semua yang butuh backend ada di objek api ini.
+         * Yang butuh backend ada di objek api ini.
          * Pas backend jadi, tinggal ganti isi fungsi yang bertanda TODO.
          */
-        const demoMessages = {};
-        const balasanDriver = [
-            'Siap kak, saya segera sampai.',
-            'Oke kak, saya tunggu di depan ya.',
-            'Baik kak, nanti saya kabari kalau sudah dekat.'
-        ];
-
         const api = {
             // posisi driver terbaru
             async track(el) {
@@ -273,42 +283,6 @@
                 // TODO backend: response JSON { lat, lng, arrived, status }
                 const res = await fetch(el.dataset.trackUrl, { headers: { 'Accept': 'application/json' } });
                 return res.json();
-            },
-
-            // ambil pesan baru (id > after)
-            async messages(box, after) {
-                if (DEMO) {
-                    const id = box.dataset.order;
-                    if (!demoMessages[id]) {
-                        demoMessages[id] = [
-                            { id: 1, sender_role: 'driver', body: 'Halo kak, saya ' + box.dataset.driver + ' dari SWASH. Saya sedang menuju lokasi ya.' },
-                            { id: 2, sender_role: 'customer', body: 'Oke kak, saya ada di rumah.' }
-                        ];
-                    }
-                    return demoMessages[id].filter(m => m.id > after);
-                }
-                // TODO backend: GET data-url?after=ID, response array [{ id, sender_role, body }]
-                const res = await fetch(`${box.dataset.url}?after=${after}`, { headers: { 'Accept': 'application/json' } });
-                return res.ok ? res.json() : [];
-            },
-
-            // kirim pesan
-            async send(box, body) {
-                if (DEMO) {
-                    const list = demoMessages[box.dataset.order];
-                    list.push({ id: list.length + 1, sender_role: 'customer', body });
-                    setTimeout(() => {
-                        list.push({ id: list.length + 1, sender_role: 'driver', body: balasanDriver[Math.floor(Math.random() * balasanDriver.length)] });
-                    }, 1500);
-                    return true;
-                }
-                // TODO backend: POST data-url dengan body JSON { body }
-                const res = await fetch(box.dataset.url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': box.dataset.token },
-                    body: JSON.stringify({ body })
-                });
-                return res.ok;
             }
         };
 
@@ -326,6 +300,12 @@
             const dLat = (b[0] - a[0]) * r, dLng = (b[1] - a[1]) * r;
             const x = Math.sin(dLat / 2) ** 2 + Math.cos(a[0] * r) * Math.cos(b[0] * r) * Math.sin(dLng / 2) ** 2;
             return 6371 * 2 * Math.asin(Math.sqrt(x));
+        }
+
+        function formatDurasi(menit) {
+            const j = Math.floor(menit / 60), m = menit % 60;
+            if (j === 0) return `${menit} menit`;
+            return m ? `${j} jam ${m} menit` : `${j} jam`;
         }
 
         // ---------- peta ----------
@@ -346,7 +326,7 @@
                 const km = jarakKm(pos, destPos);
                 // asumsi kecepatan rata-rata 25 km/jam
                 const menit = Math.max(1, Math.round(km / 25 * 60));
-                eta.textContent = km < 0.05 ? 'Driver sudah sampai' : `Sekitar ${km.toFixed(1)} km lagi, ± ${menit} menit`;
+                eta.textContent = km < 0.05 ? 'Driver sudah sampai' : `Sekitar ${km.toFixed(1)} km lagi, ± ${formatDurasi(menit)}`;
             };
             updateEta(driverPos);
 
@@ -362,45 +342,6 @@
                     if (d.status !== el.dataset.status) location.reload();
                 } catch (e) {}
             }, DEMO ? 3000 : 10000);
-        });
-
-        // ---------- chat ----------
-        document.querySelectorAll('[data-chat]').forEach(btn => {
-            const box = document.getElementById('chat-' + btn.dataset.chat);
-            const body = box.querySelector('.chat-body');
-            const form = box.querySelector('.chat-form');
-            const readonly = box.dataset.readonly === '1';
-            let lastId = 0, timer;
-
-            const load = async () => {
-                const msgs = await api.messages(box, lastId);
-                msgs.forEach(m => {
-                    const p = document.createElement('p');
-                    p.className = 'chat-msg ' + (m.sender_role === 'customer' ? 'me' : 'them');
-                    p.textContent = m.body;
-                    body.appendChild(p);
-                    lastId = m.id;
-                });
-                if (msgs.length) body.scrollTop = body.scrollHeight;
-            };
-
-            const kirim = async teks => {
-                if (!teks.trim()) return;
-                if (await api.send(box, teks)) load();
-                else toast('Pesan gagal dikirim');
-            };
-
-            btn.addEventListener('click', () => { box.showModal(); load(); if (!readonly) timer = setInterval(load, 3000); });
-            box.addEventListener('close', () => clearInterval(timer));
-
-            if (form) {
-                form.addEventListener('submit', e => {
-                    e.preventDefault();
-                    kirim(form.elements.body.value);
-                    form.reset();
-                });
-            }
-            box.querySelectorAll('.chat-quick button').forEach(q => q.addEventListener('click', () => kirim(q.textContent)));
         });
 
         // lokasi driver belum masuk: cek ulang tiap 15 detik

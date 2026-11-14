@@ -1,12 +1,12 @@
 @php
     $jasa = [
-        'antar_jemput' => ['Antar jemput', 'Gratis. Driver menjemput, menimbang, lalu mengantar kembali.'],
-        'antar_saja' => ['Antar saja', 'Gratis. Kamu antar cucian ke toko, kami antar kembali setelah selesai.'],
+        'antar_jemput' => ['Antar jemput', 'Driver jemput dan antar kembali.'],
+        'antar_saja' => ['Antar saja', 'Kamu antar ke toko, kami antar kembali.'],
     ];
 
     $alamat = [
-        'profil' => ['Alamat di profil', auth()->user()->address ?: 'Belum diisi. Isi di halaman Profil.'],
-        'lain' => ['Alamat lain', 'Tulis alamat lengkap untuk pesanan ini.'],
+        'profil' => ['Alamat di profil', auth()->user()->address ?: 'Belum diisi di Profil.'],
+        'lain' => ['Alamat lain', 'Tulis alamat lengkap.'],
     ];
 @endphp
 @extends('layouts.customer')
@@ -16,7 +16,6 @@
 @section('content')
     <header class="admin-topbar">
         <div>
-            <span class="topbar-label">SWASH / PELANGGAN</span>
             <h1>Buat Pesanan</h1>
         </div>
     </header>
@@ -81,7 +80,6 @@
                     <small class="field-error" hidden>Pilih jam pickup.</small>
                 </div>
 
-                <p class="hint">Driver membawa timbangan. Berat dan harga final menunggu persetujuan admin.</p>
             </div>
         </section>
 
@@ -104,7 +102,7 @@
 
         <section class="panel">
             <div class="field field-first">
-                <label for="notes">Catatan untuk kami (opsional)</label>
+                <label for="notes">Catatan (opsional)</label>
                 <textarea id="notes" name="notes" rows="2" placeholder="Contoh: pisahkan baju putih">{{ old('notes') }}</textarea>
             </div>
         </section>
@@ -266,7 +264,6 @@
             }
         });
 
-        // tanggal dan jam wajib diisi kalau pickup ditampilkan
         document.querySelector('.order-form').addEventListener('submit', e => {
             if (pickup.hidden) return;
             const kosong = [...pickup.querySelectorAll('.dd')].filter(dd => !dd.querySelector('input[type=hidden]').value);
